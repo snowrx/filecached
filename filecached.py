@@ -1,7 +1,8 @@
+from concurrent.futures import ThreadPoolExecutor
+from functools import cache
+import hashlib
 import os
 import socket
-import hashlib
-from functools import cache
 
 PORT = 32356
 NAME = 'default'
@@ -63,20 +64,28 @@ def processor(command: str):
     return read(l[0])
 
 
+def connector(client):
+    while client:
+        data = client.recv(BUF)
+        if not data:
+            client.sendall('empty data received'.encode())
+        else:
+            command = data.decode()
+            p = processor(command)
+            client.sendall(p.encode())
+    client.close()
+
+
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    executor = ThreadPoolExecutor()
+    executing = []
     sock.bind(('', PORT))
     sock.listen(1)
     while sock:
         try:
             client, addr = sock.accept()
-            while client:
-                data = client.recv(BUF)
-                if not data:
-                    client.sendall('empty data received'.encode())
-                else:
-                    command = data.decode()
-                    p = processor(command)
-                    client.sendall(p.encode())
-            client.close()
+            executing.append(executor.submit(connector, client))
         except Exception as e:
             print(e)
+for e in executing:
+    e.cancel()
