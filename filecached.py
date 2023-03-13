@@ -77,15 +77,13 @@ def connector(client):
 
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    executor = ThreadPoolExecutor()
-    executing = []
-    sock.bind(('', PORT))
-    sock.listen(1)
-    while sock:
-        try:
-            client, addr = sock.accept()
-            executing.append(executor.submit(connector, client))
-        except Exception as e:
-            print(e)
-for e in executing:
-    e.cancel()
+    with ThreadPoolExecutor() as executor:
+        executing = []
+        sock.bind(('', PORT))
+        sock.listen(1)
+        while sock:
+            try:
+                client, addr = sock.accept()
+                executing.append(executor.submit(connector, client))
+            except Exception as e:
+                print(e)
